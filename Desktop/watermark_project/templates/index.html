@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watermark Images</title>
+    <!-- Embedded CSS -->
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* Preloader Styles */
+        #preloader {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 16px solid #f3f3f3;
+            border-top: 16px solid #4CAF50;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Container Styles */
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Header Styles */
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #4CAF50;
+        }
+
+        /* Form Styles */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: left;
+        }
+
+        input[type="file"],
+        input[type="number"],
+        select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Output Section Styles */
+        #outputSection {
+            margin-top: 20px;
+        }
+
+        #outputImages {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .outputImage {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .buttons a {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .buttons a:hover {
+            background-color: #45a049;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="preloader">
+        <div class="spinner"></div>
+    </div>
+    <div class="container">
+        <h1>Watermark Your Images</h1>
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+            <div id="imageInputs">
+                <label for="images">Select images:</label>
+                <input type="file" id="images" name="images" required>
+            </div>
+            <button type="button" id="addImageButton">Add Another Image</button>
+            <label for="watermark">Select watermark:</label>
+            <input type="file" id="watermark" name="watermark" required>
+            <label for="watermark_type">Watermark Type:</label>
+            <select id="watermark_type" name="watermark_type" required>
+                <option value="single">Single Watermark</option>
+                <option value="loop">Loop Watermark</option>
+            </select>
+            <label for="opacity">Opacity:</label>
+            <input type="number" id="opacity" name="opacity" step="0.1" min="0" max="1" value="0.5">
+            <label for="scale_factor">Scale Factor:</label>
+            <input type="number" id="scale_factor" name="scale_factor" step="0.1" min="0" max="1" value="0.9">
+            <button type="submit">Upload</button>
+        </form>
+        <div id="outputSection" style="display: none;">
+            <h2>Watermarked Images</h2>
+            <div id="outputImages"></div>
+        </div>
+    </div>
+    <!-- Embedded JavaScript -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var preloader = document.getElementById('preloader');
+            window.addEventListener('load', function() {
+                preloader.style.display = 'none';
+            });
+
+            var uploadForm = document.getElementById('uploadForm');
+            var outputSection = document.getElementById('outputSection');
+            var outputImages = document.getElementById('outputImages');
+            var addImageButton = document.getElementById('addImageButton');
+            var imageInputs = document.getElementById('imageInputs');
+
+            addImageButton.addEventListener('click', function() {
+                var newInput = document.createElement('input');
+                newInput.type = 'file';
+                newInput.name = 'images';
+                newInput.required = true;
+                imageInputs.appendChild(newInput);
+            });
+
+            uploadForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                var formData = new FormData(uploadForm);
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        outputImages.innerHTML = '';
+                        data.image_urls.forEach(function(url) {
+                            var img = document.createElement('img');
+                            img.src = url;
+                            img.className = 'outputImage';
+                            outputImages.appendChild(img);
+                        });
+                        outputSection.style.display = 'block';
+                    } else {
+                        alert('An error occurred while processing the images.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing the images.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
